@@ -2,11 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGua
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { RoleService } from './role.service';
 import { SuperAdminGuard } from '@guards/super-admin.guard';
-import {
-  AttachPermissionsApiBody,
-  AttachPermissionsDto,
-  UpdateOrganisationRoleDto,
-} from './dto/create-role-with-permission.dto';
+import { AttachPermissionsApiBody, AttachPermissionsDto, UpdateRoleDto } from './dto/create-role-with-permission.dto';
 
 @ApiTags('organisation Settings')
 @UseGuards(SuperAdminGuard)
@@ -49,7 +45,7 @@ export class RoleController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   @ApiResponse({ status: 404, description: 'Role not found' })
   @ApiResponse({ status: 404, description: 'Organisation not found' })
-  async updateRole(updateRoleDto: UpdateOrganisationRoleDto, @Param('roleId') roleId: string) {
+  async updateRole(updateRoleDto: UpdateRoleDto, @Param('roleId') roleId: string) {
     const data = await this.roleService.updateRole({ id: roleId, payload: updateRoleDto });
 
     return {

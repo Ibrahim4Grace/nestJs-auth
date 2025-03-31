@@ -1,10 +1,11 @@
 import { Entity, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 import { AbstractBaseEntity } from '../../../entities/base.entity';
 import { Permissions } from '../../permissions/entities/permissions.entity';
+import { User } from '../../user/entities/user.entity';
 
 @Entity({ name: 'roles' })
 export class Role extends AbstractBaseEntity {
-  @Column()
+  @Column({ unique: true })
   name: string;
 
   @Column({ type: 'text', nullable: true })
@@ -12,7 +13,7 @@ export class Role extends AbstractBaseEntity {
 
   @ManyToMany(() => Permissions, (permission) => permission.roles, { cascade: true })
   @JoinTable({
-    name: 'role_permissions', // This is the join table
+    name: 'role_permissions',
     joinColumn: {
       name: 'role_id',
       referencedColumnName: 'id',
@@ -23,4 +24,7 @@ export class Role extends AbstractBaseEntity {
     },
   })
   permissions: Permissions[];
+
+  @OneToMany(() => User, (user) => user.role)
+  users: User[];
 }

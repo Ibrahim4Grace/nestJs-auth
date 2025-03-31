@@ -1,50 +1,35 @@
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-// import { OrganisationUserRole } from './entities/organisation-user-role.entity';
 import { Role } from './entities/role.entity';
-import { CreateRoleWithPermissionDto } from './dto/create-role-with-permission.dto';
+import { CreateRoleDto, CreateRoleWithPermissionDto } from './dto/create-role-with-permission.dto';
+import { AttachPermissionsDto, UpdateRoleDto } from './dto/create-role-with-permission.dto';
+import { Permissions } from '@modules/permissions/entities/permissions.entity';
+import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 import {
   RESOURCE_NOT_FOUND,
   ROLE_CREATED_SUCCESSFULLY,
   ROLE_FETCHED_SUCCESSFULLY,
 } from '@shared/constants/SystemMessages';
-import {
-  CreateOrganisationRoleDto,
-  AttachPermissionsDto,
-  UpdateOrganisationRoleDto,
-} from './dto/create-role-with-permission.dto';
-import { Permissions, DefaultPermissions } from '@modules/permissions/entities/permissions.entity';
-import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 
 @Injectable()
 export class RoleService {
   constructor(
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
-
-    // @InjectRepository(OrganisationUserRole)
-    // private organisationUserRole: Repository<OrganisationUserRole>,
-    // @InjectRepository(Organisation)
-    // private organisationRepository: Repository<Organisation>,
     @InjectRepository(Permissions)
     private permissionRepository: Repository<Permissions>,
-    @InjectRepository(DefaultPermissions)
-    private defaultPermissionsRepository: Repository<DefaultPermissions>,
   ) {}
 
-  async createRole(createRoleOption: CreateOrganisationRoleDto) {
+  async createRole(createRoleOption: CreateRoleDto) {
     const existingRole = await this.rolesRepository.findOne({ where: { name: createRoleOption.name } });
 
     if (existingRole) {
-      throw new CustomHttpException('A role with this name already exists in the organisation', HttpStatus.CONFLICT);
+      throw new CustomHttpException('A role with this name already exists', HttpStatus.CONFLICT);
     }
-    const newRole = new Role();
-    Object.assign(newRole, createRoleOption);
 
-    const role = await this.rolesRepository.save(newRole);
-
-    return role;
+    const newRole = this.rolesRepository.create(createRoleOption);
+    return await this.rolesRepository.save(newRole);
   }
 
   async attachRoletoPermissions(payload: AttachPermissionsDto) {
@@ -75,22 +60,16 @@ export class RoleService {
     };
   }
 
-  async getAllRolesInOrganisation(organisationId: string) {
-    // const organisation = await this.organisationRepository.findOne({
-    //   where: { id: organisationId },
-    // });
-    // if (!organisation) {
-    //   throw new NotFoundException('Organisation not found');
-    // }
-    // const query = (await this.organisationUserRole.find({ where: { organisationId: organisation.id } })).map(
-    //   (organisationRole) => organisationRole.roleId,
-    // );
-    // return query;
-  }
-
   public async getRoleById(id: string): Promise<Role> {
     return await this.rolesRepository.findOne({
       where: { id },
+      relations: ['permissions'],
+    });
+  }
+
+  public async getRoleByName(name: string): Promise<Role> {
+    return await this.rolesRepository.findOne({
+      where: { name },
       relations: ['permissions'],
     });
   }
@@ -115,7 +94,7 @@ export class RoleService {
     };
   }
 
-  async updateRole(updateRoleOption: { id: string; payload: UpdateOrganisationRoleDto }) {
+  async updateRole(updateRoleOption: { id: string; payload: UpdateRoleDto }) {
     const role = await this.rolesRepository.findOne({
       where: {
         id: updateRoleOption.id,
@@ -127,7 +106,12 @@ export class RoleService {
     }
     Object.assign(role, updateRoleOption.payload);
     await this.rolesRepository.save(role);
-    return role;
+
+    return {
+      status_code: HttpStatus.OK,
+      message: 'Role updated successfully',
+      data: role,
+    };
   }
 
   async updateRolePermissions({ roleId, permissions }: { roleId: string; permissions?: string[] }) {

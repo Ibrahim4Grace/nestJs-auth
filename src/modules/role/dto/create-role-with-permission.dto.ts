@@ -1,7 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
 
-export class CreateOrganisationRoleDto {
+export class CreateRoleDto {
   @ApiProperty({ description: 'The name of the role', maxLength: 50 })
   @IsString()
   @IsNotEmpty()
@@ -18,11 +18,11 @@ export class CreateOrganisationRoleDto {
 export class CreateRoleWithPermissionDto {
   @ApiProperty({ description: 'The name of the role', maxLength: 50 })
   @ApiProperty({ description: 'The description of the role', maxLength: 200 })
-  rolePayload: CreateOrganisationRoleDto;
+  rolePayload: CreateRoleDto;
   permissions_ids: string[];
 }
 
-export class UpdateOrganisationRoleDto extends PartialType(CreateOrganisationRoleDto) {}
+export class UpdateRoleDto extends PartialType(CreateRoleDto) {}
 
 export type AttachPermissionsDto = {
   roleId: string;
