@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Permissions } from './entities/permissions.entity';
 import { UpdatePermissionOption } from './dto/create-permission.dto';
 import { CustomHttpException } from '@shared/helpers/custom-http-filter';
+import * as SYS_MSG from '@shared/constants/SystemMessages';
 import { RESOURCE_NOT_FOUND } from '@shared/constants/SystemMessages';
 
 @Injectable()
@@ -14,16 +15,20 @@ export class OrganisationPermissionsService {
   ) {}
 
   public async createPermission(title: string): Promise<Permissions> {
+    const existingPermission = await this.permissionRepository.findOne({
+      where: { title },
+    });
+
+    if (existingPermission) {
+      throw new CustomHttpException('Permission already exists', HttpStatus.CONFLICT);
+    }
+
     const permission = new Permissions();
     permission.title = title;
     return await this.permissionRepository.save(permission);
   }
 
-  public async getPermissions(): Promise<Permissions[]> {
-    return await this.permissionRepository.find();
-  }
-
-  public async getAllPermissions() {
+  public async getPermissions() {
     const permissions = await this.getPermissions();
     return {
       status_code: HttpStatus.OK,

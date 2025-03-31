@@ -15,7 +15,6 @@ export class OrganisationPermissionsController {
     description: 'Create a new existing permission',
     type: CreatePermissionDto,
   })
-  // @UseGuards(OwnershipGuard)
   @Post('')
   async createPermission(@Body() createPermissionDto: CreatePermissionDto) {
     return await this.permissionService.createPermission(createPermissionDto.title);
@@ -35,7 +34,7 @@ export class OrganisationPermissionsController {
   @ApiOperation({ summary: 'Fetch all Permission' })
   @Get('')
   async getAllPermissions() {
-    return await this.permissionService.getAllPermissions();
+    return await this.permissionService.getPermissions();
   }
 
   @ApiOperation({ summary: 'Fetch a single Permission' })
