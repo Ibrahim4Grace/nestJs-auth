@@ -1,34 +1,23 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import * as SYS_MSG from '@shared/constants/SystemMessages';
-
 import UserService from '@modules/user/user.service';
 import { OtpService } from '@modules/otp/otp.service';
 import { EmailService } from '@modules/email/email.service';
 import { CustomHttpException } from '@shared/helpers/custom-http-filter';
-import { GoogleAuthPayload, CreateUserResponse } from './interfaces/GoogleAuthPayloadInterface';
-import { TokenPayload } from 'google-auth-library';
-import { OtpDto } from '@modules/otp/dto/otp.dto';
+import { CreateUserResponse } from './interfaces/GoogleAuthPayloadInterface';
 import { DataSource, EntityManager } from 'typeorm';
 import { TokenService } from '../token/token.service';
 import { PasswordService } from './password.service';
 import { Logger } from '@nestjs/common';
 import { AuthHelperService } from './auth-helper.service';
 import {
-  RequestSigninTokenDto,
   LoginResponseDto,
   LoginDto,
   UpdatePasswordDto,
   ForgotPasswordDto,
   CreateUserDTO,
-  ChangePasswordDto,
-  AuthResponseDto,
-  GoogleAuthPayloadDto,
-  GenericAuthResponseDto,
-  LoginErrorResponseDto,
-  UpdateUserPasswordResponseDTO,
 } from './dto/auth-response.dto';
-import { User } from '@modules/user/entities/user.entity';
 
 const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
 
@@ -46,7 +35,6 @@ export default class AuthenticationService {
   ) {}
 
   async createNewUser(createUserDto: CreateUserDTO): Promise<CreateUserResponse> {
-    console.log('Incoming createUserDto:', createUserDto);
     const result = await this.dataSource.transaction(async (manager: EntityManager) => {
       const userExists = await this.userService.getUserRecord({
         identifier: createUserDto.email,
@@ -125,49 +113,12 @@ export default class AuthenticationService {
     };
   }
 
-  async loginUser(loginDto: LoginDto): Promise<LoginResponseDto> {
-    const { email, password } = loginDto;
-    const user = await this.userService.getUserRecord({
-      identifier: email,
-      identifierType: 'email',
-    });
-    if (!user) {
-      throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
-    }
-
-    const access_token = this.tokenService.createAuthToken({
-      userId: user.id,
-      role: user.user_type,
-    });
-
-    const responsePayload = {
-      access_token,
-      data: {
-        user: {
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
-          role: user.user_type,
-        },
-      },
-    };
-
-    return { message: SYS_MSG.LOGIN_SUCCESSFUL, ...responsePayload };
-  }
-
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string; token: string }> {
     const user = await this.userService.getUserRecord({ identifier: dto.email, identifierType: 'email' });
     if (!user) {
       throw new CustomHttpException(SYS_MSG.USER_ACCOUNT_DOES_NOT_EXIST, HttpStatus.BAD_REQUEST);
     }
 
-    // Delete all existing OTPs for this user first
     await this.otpService.deleteOtp(user.id);
 
     const otpResult = await this.otpService.createOtp(user.id);
@@ -241,123 +192,59 @@ export default class AuthenticationService {
     };
   }
 
-  // async changePassword(user_id: string, oldPassword: string, newPassword: string) {
-  //   const user = await this.userService.getUserRecord({
-  //     identifier: user_id,
-  //     identifierType: 'id',
-  //   });
+  async loginUser(loginDto: LoginDto): Promise<LoginResponseDto> {
+    const { email, password } = loginDto;
+    const user = await this.userService.getUserRecord({
+      identifier: email,
+      identifierType: 'email',
+    });
+    if (!user) {
+      throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+    }
 
-  //   if (!user) {
-  //     throw new CustomHttpException(SYS_MSG.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-  //   }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+    }
 
-  //   const isPasswordValid = bcrypt.compareSync(oldPassword, user.password);
-  //   if (!isPasswordValid) {
-  //     throw new CustomHttpException(SYS_MSG.INVALID_PASSWORD, HttpStatus.BAD_REQUEST);
-  //   }
+    const access_token = this.tokenService.createAuthToken({
+      userId: user.id,
+      role: user.user_type,
+    });
 
-  //   await this.userService.updateUserRecord({
-  //     updatePayload: { password: newPassword },
-  //     identifierOptions: {
-  //       identifierType: 'id',
-  //       identifier: user.id,
-  //     },
-  //   });
-  //   await this.otpService.deleteOtp(user.id);
-  //   return {
-  //     message: SYS_MSG.PASSWORD_UPDATED,
-  //   };
-  // }
+    const refresh_token = this.tokenService.createRefreshToken({
+      userId: user.id,
+      role: user.user_type,
+    });
 
-  // async googleAuth(googleAuthPayload: GoogleAuthPayload) {
-  //   const idToken = googleAuthPayload.id_token;
+    const responsePayload = {
+      access_token,
+      refresh_token,
+      data: {
+        user: {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          role: user.user_type,
+        },
+      },
+    };
 
-  //   if (!idToken) {
-  //     throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
-  //   }
+    return { message: SYS_MSG.LOGIN_SUCCESSFUL, ...responsePayload };
+  }
 
-  //   const request = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`);
+  async refreshToken(refresh_token: string): Promise<{ access_token: string }> {
+    try {
+      const payload = await this.tokenService.verifyRefreshToken(refresh_token);
+      const access_token = this.tokenService.createAuthToken({
+        userId: payload.userId,
+        role: payload.role,
+      });
 
-  //   if (request.status === 400) {
-  //     throw new CustomHttpException(SYS_MSG.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
-  //   }
-  //   if (request.status === 500) {
-  //     throw new CustomHttpException(SYS_MSG.SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
-  //   }
-  //   const verifyTokenResponse: TokenPayload = await request.json();
-
-  //   const userEmail = verifyTokenResponse.email;
-  //   const userExists = await this.userService.getUserRecord({ identifier: userEmail, identifierType: 'email' });
-
-  //   if (!userExists) {
-  //     const userCreationPayload = {
-  //       email: userEmail,
-  //       first_name: verifyTokenResponse.given_name || '',
-  //       last_name: verifyTokenResponse?.family_name || '',
-  //       password: '',
-  //       profile_pic_url: verifyTokenResponse?.picture || '',
-  //     };
-  //     return await this.createUserGoogle(userCreationPayload);
-  //   }
-
-  //   // const userOranisations = await this.organisationService.getAllUserOrganisations(userExists.id, 1, 10);
-  //   // const isSuperAdmin = userOranisations.map((instance) => instance.user_role).includes('super-admin');
-  //   const accessToken = this.tokenService.createAuthToken({
-  //     // sub: userExists.id,
-  //     // id: userExists.id,
-  //     // email: userExists.email,
-  //     // first_name: userExists.first_name,
-  //     last_name: userExists.last_name,
-  //   });
-
-  //   return {
-  //     message: SYS_MSG.LOGIN_SUCCESSFUL,
-  //     access_token: accessToken,
-  //     data: {
-  //       user: {
-  //         id: userExists.id,
-  //         email: userExists.email,
-  //         first_name: userExists.first_name,
-  //         last_name: userExists.last_name,
-  //         // is_superadmin: isSuperAdmin,
-  //       },
-  //     },
-  //   };
-  // }
-
-  // public async createUserGoogle(userPayload: CreateUserDTO) {
-  //   const newUser = await this.userService.createUser(userPayload);
-  //   const newOrganisationPaload = {
-  //     name: `${newUser.first_name}'s Organisation`,
-  //     description: '',
-  //     email: newUser.email,
-  //     industry: '',
-  //     type: '',
-  //     country: '',
-  //     address: '',
-  //     state: '',
-  //   };
-
-  //   const accessToken = this.jwtService.sign({
-  //     sub: newUser.id,
-  //     id: newUser.id,
-  //     email: userPayload.email,
-  //     first_name: userPayload.first_name,
-  //     last_name: userPayload.last_name,
-  //   });
-  //   return {
-  //     status_code: HttpStatus.CREATED,
-  //     message: SYS_MSG.USER_CREATED,
-  //     access_token: accessToken,
-  //     data: {
-  //       user: {
-  //         id: newUser.id,
-  //         email: newUser.email,
-  //         first_name: newUser.first_name,
-  //         last_name: newUser.last_name,
-  //         // is_superadmin: isSuperAdmin,
-  //       },
-  //     },
-  //   };
-  // }
+      return { access_token };
+    } catch (error) {
+      throw new CustomHttpException(SYS_MSG.INVALID_REFRESH_TOKEN, HttpStatus.UNAUTHORIZED);
+    }
+  }
 }

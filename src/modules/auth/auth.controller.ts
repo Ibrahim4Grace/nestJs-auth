@@ -1,35 +1,26 @@
 import { ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
 import * as SYS_MSG from '@shared/constants/SystemMessages';
-import { Body, Controller, HttpCode, Post, Req, Request, Patch, Headers } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Patch, Headers } from '@nestjs/common';
 import { skipAuth } from '@shared/helpers/skipAuth';
 import AuthenticationService from './auth.service';
 import { OtpDto } from '../otp/dto/otp.dto';
-import { GoogleAuthPayload } from './interfaces/GoogleAuthPayloadInterface';
-import { CustomHttpException } from '@shared/helpers/custom-http-filter';
+import { ErrorCreateUserResponse, SuccessCreateUserResponse } from '../user/dto/user-response.dto';
 import {
-  ErrorCreateUserResponse,
-  RequestVerificationToken,
-  SuccessCreateUserResponse,
-} from '../user/dto/user-response.dto';
-import {
-  RequestSigninTokenDto,
   LoginDto,
   LoginResponseDto,
   ForgotPasswordDto,
+  AuthResponseDto,
   ForgotPasswordResponseDto,
   CreateUserDTO,
-  ChangePasswordDto,
-  AuthResponseDto,
-  GoogleAuthPayloadDto,
-  GenericAuthResponseDto,
   UpdatePasswordDto,
   LoginErrorResponseDto,
   UpdateUserPasswordResponseDTO,
+  RefreshTokenDto,
 } from './dto/auth-response.dto';
 
 @ApiTags('Authentication')
-@Controller('auth/user')
+@Controller('auth')
 export default class RegistrationController {
   constructor(private authService: AuthenticationService) {}
 
@@ -52,17 +43,6 @@ export default class RegistrationController {
   @Post('verify-otp')
   public async verifyEmail(@Headers('authorization') authorization: string, @Body() verifyOtp: OtpDto) {
     return this.authService.verifyToken(authorization, verifyOtp);
-  }
-
-  @skipAuth()
-  @Post('login')
-  @ApiOperation({ summary: 'Login a user' })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'Login successful', type: LoginResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Invalid credentials', type: LoginErrorResponseDto })
-  @HttpCode(200)
-  async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto | { status_code: number; message: string }> {
-    return this.authService.loginUser(loginDto);
   }
 
   @skipAuth()
@@ -107,28 +87,25 @@ export default class RegistrationController {
     return this.authService.updateForgotPassword(authorization, updatePasswordDto);
   }
 
-  // @skipAuth()
-  // @Post('google')
-  // @ApiOperation({ summary: 'Google Authentication' })
-  // @ApiBody({ type: GoogleAuthPayloadDto })
-  // @ApiResponse({ status: 200, description: 'Verify Payload sent from google', type: AuthResponseDto })
-  // @ApiBadRequestResponse({ description: 'Google authentication failed' })
-  // @HttpCode(200)
-  // async googleAuth(@Body() body: GoogleAuthPayload) {
-  //   return this.authService.googleAuth(body);
-  // }
+  @skipAuth()
+  @Post('login')
+  @ApiOperation({ summary: 'Login a user' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: 'Login successful', type: LoginResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials', type: LoginErrorResponseDto })
+  @HttpCode(200)
+  public async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
+    return this.authService.loginUser(loginDto);
+  }
 
-  // @ApiBearerAuth()
-  // @ApiBody({ type: ChangePasswordDto })
-  // @ApiOperation({ summary: 'Change user password' })
-  // @ApiResponse({ status: 200, description: 'Password changed successfully' })
-  // @ApiResponse({ status: 400, description: 'Bad request' })
-  // @ApiResponse({ status: 401, description: 'Unauthorized' })
-  // @HttpCode(200)
-  // @Post('change-password')
-  // public async changePassword(@Body() body: ChangePasswordDto, @Req() request: Request): Promise<any> {
-  //   const user = request['user'];
-  //   const userId = user.id;
-  //   return this.authService.changePassword(userId, body.oldPassword, body.newPassword);
-  // }
+  @skipAuth()
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: 'Access token refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+  @HttpCode(200)
+  @Post('refresh')
+  public async refreshToken(@Body() body: RefreshTokenDto) {
+    return this.authService.refreshToken(body.refresh_token);
+  }
 }

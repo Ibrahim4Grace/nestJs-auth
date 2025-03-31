@@ -14,7 +14,7 @@ import { TokenService } from '@modules/token/token.service';
 import { Role } from '@modules/role/entities/role.entity';
 import { OtpModule } from '@modules/otp/otp.module';
 import { EmailModule } from '@modules/email/email.module';
-import appConfig from '@config/auth.config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PasswordService } from '../auth/password.service';
 import { AuthHelperService } from './auth-helper.service';
 
@@ -35,10 +35,13 @@ import { AuthHelperService } from './auth-helper.service';
     PassportModule,
     OtpModule,
     EmailModule,
-    JwtModule.register({
-      global: true,
-      secret: appConfig().jwtSecret,
-      signOptions: { expiresIn: `${appConfig().jwtExpiry}s` },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_AUTH_SECRET'),
+        signOptions: { expiresIn: '1d' },
+      }),
+      inject: [ConfigService],
     }),
   ],
 })
