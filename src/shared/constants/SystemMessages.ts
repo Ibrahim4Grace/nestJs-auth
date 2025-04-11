@@ -12,12 +12,17 @@ export const OTP_VERIFIED_SUCCESSFULLY = 'Otp verified successfully';
 export const OTP_VERIFIED = 'OTP not verified for this operation';
 export const INVALID_HEADER = 'Invalid or missing Authorization header';
 export const TOKEN_NOT_PROVIDED = 'Token not provided in Authorization header';
+
 // export const TWO_FACTOR_VERIFIED_SUCCESSFULLY = '2FA verified and enabled';
 // export const ANALYTICS_FETCHED_SUCCESSFULLY = 'Admin Analytics fetched successfully';
 // export const DASHBOARD_FETCHED_SUCCESSFULLY = 'Admin Dashboard retrieved successfully';
 
 export const USER_NOT_FOUND = 'User not found!';
-
+export const PROFILE_FOUND = 'Successfully fetched profile';
+export const PROFILE_UPDATED = 'Successfully updated profile';
+export const PROFILE_DELETED = 'Successfully deleted profile';
+export const USER_PROFILE_NOT_FOUND = 'User profile not found';
+export const PROFILE_NOT_FOUND = 'Profile not found';
 export const INVALID_PASSWORD = 'Invalid password';
 
 export const BAD_REQUEST = 'Bad Request';
@@ -36,17 +41,21 @@ export const LOGIN_ERROR = 'An error occurred during login';
 export const EMAIL_SENT = 'Email sent successfully';
 
 export const VERIFY_OTP_SENT = 'OTP sent for verification, please check your email';
-export const WRONG_PARAMETERS =
-  'permission_list must be an object with keys from PermissionCategory and boolean values';
+// export const WRONG_PARAMETERS =
+//   'permission_list must be an object with keys from PermissionCategory and boolean values';
 // export const INVALID_ADMIN_SECRET = 'Invalid access secret';
 // export const ADMIN_CREATED = 'Admin Created Successfully';
 export const SERVER_ERROR = 'Sorry a server error occured';
 export const FORBIDDEN_ACTION = 'You dont have the permission to perform this action';
 export const INVALID_OTP = 'Invalid or expired OTP';
+export const EXPIRED_OTP = 'expired OTP';
+export const FAILED = 'Failed to generate OTP';
 export const NOT_ORG_OWNER = 'You do not have permission to update this organisation';
 export const PASSWORD_UPDATED = 'Password updated successfully';
 export const DUPLICATE_PASSWORD = 'New password cannot be the same as old password';
 export const REQUEST_SUCCESSFUL = 'Request completed successfully';
+export const INVALID_REFRESH_TOKEN = 'Invalid refresh token';
+export const ADMIN_ROLE_NOT_FOUND = 'Admin Role does not exist';
 // export const PAYMENT_NOTFOUND = 'Payment plan not found';
 
 export const ROLE_NOT_FOUND = 'Role not found in the organization';
@@ -63,6 +72,7 @@ export const EMAIL_TEMPLATES = {
   TEMPLATE_NOT_FOUND: 'Template not found',
 };
 export const EXISTING_ROLE = 'A role with this name already exists in the organisation';
+export const ACCESS_DENIED = 'Access denied: Admin privileges required';
 
 export const ROLE_FETCHED_SUCCESSFULLY = 'Roles fetched successfully';
 export const ROLE_CREATED_SUCCESSFULLY = 'Role created successfully';
@@ -76,13 +86,10 @@ export const USER_NOT_REGISTERED = 'User not found, register to continue';
 
 export const INVALID_USER_ID = 'Provide a valid user Id';
 
-// export const ERROR_DIRECTORY = 'Error creating uploads directory:';
-// export const DIRECTORY_CREATED = 'Uploads directory created at:';
-
 export const MAX_PROFILE_PICTURE_SIZE = 2 * 1024 * 1024;
 export const VALID_UPLOADS_MIME_TYPES = ['image/jpeg', 'image/png'];
-export const BASE_URL = 'https://staging.api-nestjs.boilerplate.hng.tech';
+export const BASE_URL = 'https://';
 export const PROFILE_PHOTO_UPLOADS = path.join(__dirname, '..', 'uploads');
 
-export const FAILED_TO_CREATE_BORROWER = 'Failed to create borrower';
-export const BORROWER_NOT_FOUND = 'Borrower not found';
+export const ACCESS_DENIED_USER_PROFILE = 'Access denied: You can only view your own user profile';
+export const ACCESS_DENIED_USER_UPDATE = 'Access denied: You can only update your own user profile';

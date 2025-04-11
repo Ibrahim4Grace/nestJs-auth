@@ -1,86 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CreateApiStatusDto } from './dto/create-api-status.dto';
-import { ApiHealth, ApiStatus } from './entities/api-status.entity';
-import { Request } from './entities/request.entity';
+import { UpdateApiStatusDto } from './dto/update-api-status.dto';
 
 @Injectable()
 export class ApiStatusService {
-  constructor(
-    @InjectRepository(ApiHealth)
-    private readonly apiHealthRepository: Repository<ApiHealth>,
-    @InjectRepository(Request)
-    private readonly requestRepository: Repository<Request>,
-  ) {}
-
-  async create(apiHealthDto: CreateApiStatusDto[]) {
-    const apiHealthList = [];
-
-    for (const eachApiStatus of apiHealthDto) {
-      const apiHealth = await this.apiHealthRepository.findOne({
-        where: { api_group: eachApiStatus.api_group },
-      });
-
-      if (!apiHealth) {
-        const apiRequestList = [];
-        const savedApiHealth = await this.apiHealthRepository.save(eachApiStatus);
-        await Promise.all(
-          eachApiStatus.requests.map(async (request) => {
-            const savedRequest = await this.requestRepository.save({
-              ...request,
-              api_health: savedApiHealth,
-              updated_at: new Date(),
-            });
-            apiRequestList.push(savedRequest);
-            return savedRequest;
-          }),
-        );
-
-        const savedHealth = await this.apiHealthRepository.findOne({
-          where: { id: apiHealth.id },
-        });
-
-        savedHealth.requests = apiRequestList;
-        await this.apiHealthRepository.save(savedHealth);
-
-        apiHealthList.push(apiHealth);
-      } else {
-        const apiRequestList = [];
-
-        await this.requestRepository.clear();
-
-        await Promise.all(
-          eachApiStatus.requests.map(async (request) => {
-            const savedRequest = await this.requestRepository.save(request);
-            apiRequestList.push(savedRequest);
-            return savedRequest;
-          }),
-        );
-
-        Object.assign(apiHealth, ApiStatus);
-        apiHealth.requests = apiRequestList;
-        apiHealth.updated_at = new Date();
-        apiHealth.lastChecked = new Date();
-        await this.apiHealthRepository.save(apiHealth);
-        apiHealthList.push(apiHealth);
-      }
-    }
-
-    return {
-      message: `Status Added Successfully`,
-      data: apiHealthList,
-    };
+  create(createApiStatusDto: CreateApiStatusDto) {
+    return 'This action adds a new apiStatus';
   }
 
-  async findAll() {
-    const apiHealthData = await this.apiHealthRepository.find({
-      relations: ['requests'],
-    });
+  findAll() {
+    return `This action returns all apiStatus`;
+  }
 
-    return {
-      message: `Health Status Retrieved Successfully`,
-      data: apiHealthData,
-    };
+  findOne(id: number) {
+    return `This action returns a #${id} apiStatus`;
+  }
+
+  update(id: number, updateApiStatusDto: UpdateApiStatusDto) {
+    return `This action updates a #${id} apiStatus`;
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} apiStatus`;
   }
 }

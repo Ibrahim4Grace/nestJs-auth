@@ -5,7 +5,7 @@ import { AbstractBaseEntity } from '../../../entities/base.entity';
 @Entity()
 export class Otp extends AbstractBaseEntity {
   @Column()
-  token: string;
+  otp: string;
 
   @Column()
   expiry: Date;

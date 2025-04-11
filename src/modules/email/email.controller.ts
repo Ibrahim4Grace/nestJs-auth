@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Body, Res, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, Patch, Param } from '@nestjs/common';
 import { Response } from 'express';
 import { EmailService } from './email.service';
 import { UpdateTemplateDto, createTemplateDto, getTemplateDto } from './dto/email.dto';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   GetTemplateResponseDto,
   CreateTemplateResponseDto,
@@ -11,14 +11,9 @@ import {
   GetAllTemplatesResponseDto,
 } from './dto/email.dto';
 
-import { SuperAdminGuard } from '@guards/super-admin.guard';
-
-@ApiTags('Emails')
-@ApiBearerAuth()
-@UseGuards(SuperAdminGuard)
 @Controller('email')
 export class EmailController {
-  constructor(private emailService: EmailService) {}
+  constructor(private readonly emailService: EmailService) {}
 
   @ApiOperation({ summary: 'Store a new email template' })
   @ApiResponse({ status: 201, description: 'Template created successfully', type: CreateTemplateResponseDto })
@@ -47,7 +42,6 @@ export class EmailController {
   @ApiOperation({ summary: 'Retrieve an email template' })
   @ApiResponse({ status: 200, description: 'Template retrieved successfully', type: GetTemplateResponseDto })
   @ApiResponse({ status: 404, description: 'Template not found', type: ErrorResponseDto })
-  @UseGuards(SuperAdminGuard)
   @Post('get-template')
   async getTemplate(@Body() body: getTemplateDto, @Res() res: Response): Promise<any> {
     const response = await this.emailService.getTemplate(body);

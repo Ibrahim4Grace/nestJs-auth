@@ -1,14 +1,18 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { TokenService } from '../token/token.service';
-import UserService from '@modules/user/user.service';
+import { UserService } from '@modules/user/user.service';
 import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 import * as SYS_MSG from '@shared/constants/SystemMessages';
+import { User } from '@modules/user/entities/user.entity';
+import { AdminDetails, CreateAuthDto } from './dto/create-auth.dto';
+import { EntityManager } from 'typeorm';
+import { UserRole } from './enum/usertype';
 
 @Injectable()
 export class AuthHelperService {
   constructor(
-    private readonly tokenService: TokenService,
-    private readonly userService: UserService,
+    private tokenService: TokenService,
+    private userService: UserService,
   ) {}
 
   /**

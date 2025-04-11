@@ -1,12 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import * as Handlebars from 'handlebars';
+import Handlebars from 'handlebars';
 import * as htmlValidator from 'html-validator';
 import * as fs from 'fs';
 import { promisify } from 'util';
 import * as path from 'path';
-import QueueService from './queue.service';
+import { QueueService } from './queue.service';
 import { createTemplateDto, getTemplateDto, UpdateTemplateDto } from './dto/email.dto';
-import { IMessageInterface, ArticleInterface, MailInterface } from './interface/message.interface';
+import { MailInterface } from './interface/mail.interface';
 import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 import * as SYS_MSG from '@shared/constants/SystemMessages';
 import { getFile, createFile, deleteFile } from '@shared/helpers/fileHelpers';
@@ -26,7 +26,6 @@ export class EmailService {
 
     // await this.mailerService.sendMail({ variant: 'register-otp', mail: mailPayload });
     const { jobId } = await this.mailerService.sendMail({ variant: 'register-otp', mail: mailPayload });
-    console.log(`Queued OTP email job with ID: ${jobId} for ${email}`);
   }
 
   async sendUserConfirmationMail(email: string, name: string, timestamp: string) {

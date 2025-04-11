@@ -1,19 +1,18 @@
-import { Column, Entity, OneToOne } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 import { AbstractBaseEntity } from '../../../entities/base.entity';
-import { Borrower } from '../../borrower/entities/borrower.entity';
-import { UserType } from '../../enums/enum';
-// import { NotificationSettings } from '../../../modules/notification-settings/entities/notification-setting.entity';
-// import { Notification } from '../../../modules/notifications/entities/notifications.entity';
+import { Subscription } from '../../subscription/entities/subscription.entity';
+import { Employee } from '../../employee/entities/employee.entity';
+import { UserRole } from '../../auth/enum/usertype';
 
 @Entity({ name: 'users' })
 export class User extends AbstractBaseEntity {
   @Column({ nullable: false })
-  first_name: string;
+  name: string;
 
   @Column({ nullable: false })
-  last_name: string;
+  username: string;
 
-  @Column({ unique: true, nullable: false })
+  @Column({ nullable: false, unique: true })
   email: string;
 
   @Column({ nullable: false })
@@ -23,13 +22,13 @@ export class User extends AbstractBaseEntity {
   phone: string;
 
   @Column({ nullable: true })
-  username: string;
+  address: string;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role: UserRole;
 
   @Column({ nullable: true })
-  jobTitle: string;
-
-  @Column({ type: 'enum', enum: UserType, default: UserType.BORROWER })
-  user_type: UserType;
+  profilePicture: string;
 
   @Column({ default: false })
   emailVerified: boolean;
@@ -37,15 +36,9 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   is_active: boolean;
 
-  @Column({ default: 3 })
-  attempts_left: number;
+  @OneToMany(() => Subscription, (subscription) => subscription.user)
+  subscriptions: Subscription[];
 
-  @OneToOne(() => Borrower, (borrower) => borrower.user)
-  borrower: Borrower;
-
-  // @OneToMany(() => Notification, (notification) => notification.user)
-  // notifications: Notification[];
-
-  // @OneToOne(() => NotificationSettings, (notification_settings) => notification_settings.user)
-  // notification_settings: NotificationSettings[];
+  @OneToMany(() => Employee, (employee) => employee.user) // If employees are linked to users
+  employees: Employee[]; // Only if users can have multiple employee profiles or if this is a 1:1 relationship
 }

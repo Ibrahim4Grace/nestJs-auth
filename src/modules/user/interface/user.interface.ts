@@ -1,36 +1,37 @@
 import { UpdateRecordGeneric } from '@shared/helpers/UpdateRecordGeneric';
-import { UserType } from '../../enums/enum';
+import { UserRole } from '../../auth/enum/usertype';
 
 export interface UserPayload {
-  id: string;
+  userId: string;
   email: string;
+  role: string;
+  iat: number;
+  exp: number;
 }
 
 export interface UserInterface {
   id: string;
 
+  pronouns: string;
+
   email: string;
 
-  first_name: string;
-
-  last_name: string;
+  name: string;
 
   password: string;
 
   is_active: boolean;
 
-  attempts_left: number;
-  user_type: UserType;
-  time_left: number;
+  role: UserRole;
 
   created_at: Date;
 
   updated_at: Date;
 
-  phone_number?: string;
+  phone?: string;
 }
 
-export type CreateNewUserOptions = Pick<UserInterface, 'email' | 'first_name' | 'last_name' | 'password'> & {
+export type CreateNewUserOptions = Pick<UserInterface, 'email' | 'name' | 'password' | 'role'> & {
   admin_secret?: string;
 };
 

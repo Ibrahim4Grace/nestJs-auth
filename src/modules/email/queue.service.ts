@@ -1,10 +1,10 @@
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { MailInterface } from './interface/message.interface';
+import { MailInterface } from './interface/mail.interface';
 import { Injectable } from '@nestjs/common';
 
 Injectable();
-export default class QueueService {
+export class QueueService {
   constructor(
     @InjectQueue('emailSending')
     private readonly emailQueue: Queue,

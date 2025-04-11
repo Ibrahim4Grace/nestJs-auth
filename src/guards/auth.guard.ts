@@ -1,48 +1,69 @@
-import { Module } from '@nestjs/common';
-import RegistrationController from './auth.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { User } from '@modules/user/entities/user.entity';
-import AuthenticationService from './auth.service';
-import { Repository } from 'typeorm';
-import UserService from '@modules/user/user.service';
-import { OtpService } from '@modules/otp/otp.service';
-import { EmailService } from '@modules/email/email.service';
-import { Otp } from '@modules/otp/entities/otp.entity';
-import { TokenService } from '@modules/token/token.service';
-import { Role } from '@modules/role/entities/role.entity';
-import { OtpModule } from '@modules/otp/otp.module';
-import { EmailModule } from '@modules/email/email.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { PasswordService } from '../auth/password.service';
-import { AuthHelperService } from './auth-helper.service';
+import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
+import * as SYS_MSG from '@shared/constants/SystemMessages';
+import { IS_PUBLIC_KEY } from '@shared/helpers/skipAuth';
+import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 
-@Module({
-  controllers: [RegistrationController],
-  providers: [
-    AuthenticationService,
-    Repository,
-    UserService,
-    OtpService,
-    TokenService,
-    EmailService,
-    PasswordService,
-    AuthHelperService,
-  ],
-  imports: [
-    TypeOrmModule.forFeature([User, Otp, Role]),
-    PassportModule,
-    OtpModule,
-    EmailModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_AUTH_SECRET'),
-        signOptions: { expiresIn: '1d' },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-})
-export class AuthModule {}
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(
+    private jwtService: JwtService,
+    private reflector: Reflector,
+    private configService: ConfigService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const token = this.extractTokenFromHeader(request);
+
+    const isPublicRoute = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublicRoute) {
+      return true;
+    }
+
+    if (!token) {
+      throw new CustomHttpException(SYS_MSG.UNAUTHENTICATED_MESSAGE, HttpStatus.UNAUTHORIZED);
+    }
+
+    const secret = this.configService.get<string>('JWT_AUTH_SECRET');
+    if (!secret) {
+      throw new CustomHttpException('JWT_AUTH_SECRET is not defined', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const payload = await this.jwtService
+      .verifyAsync(token, {
+        secret,
+      })
+      .catch((err) => null);
+
+    if (!payload) throw new CustomHttpException(SYS_MSG.UNAUTHENTICATED_MESSAGE, HttpStatus.UNAUTHORIZED);
+
+    if (this.isExpiredToken(payload)) {
+      throw new CustomHttpException(SYS_MSG.UNAUTHENTICATED_MESSAGE, HttpStatus.UNAUTHORIZED);
+    }
+    request['user'] = payload;
+    request['token'] = token;
+
+    return true;
+  }
+
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
+  }
+
+  private isExpiredToken(token: any) {
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (token.exp < currentTime) {
+      return true;
+    }
+    return false;
+  }
+}

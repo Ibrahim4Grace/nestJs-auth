@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import RegistrationController from './auth.controller';
+import { AuthController } from './auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { User } from '@modules/user/entities/user.entity';
-import AuthenticationService from './auth.service';
+import { AuthService } from './auth.service';
 import { Repository } from 'typeorm';
-import UserService from '@modules/user/user.service';
+import { UserService } from '@modules/user/user.service';
 import { OtpService } from '@modules/otp/otp.service';
 import { EmailService } from '@modules/email/email.service';
 import { Otp } from '@modules/otp/entities/otp.entity';
@@ -17,11 +17,12 @@ import { EmailModule } from '@modules/email/email.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PasswordService } from '../auth/password.service';
 import { AuthHelperService } from './auth-helper.service';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
-  controllers: [RegistrationController],
+  controllers: [AuthController],
   providers: [
-    AuthenticationService,
+    AuthService,
     Repository,
     UserService,
     OtpService,
@@ -29,12 +30,14 @@ import { AuthHelperService } from './auth-helper.service';
     EmailService,
     PasswordService,
     AuthHelperService,
+    GoogleStrategy,
   ],
   imports: [
     TypeOrmModule.forFeature([User, Otp, Role]),
     PassportModule,
     OtpModule,
     EmailModule,
+    ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

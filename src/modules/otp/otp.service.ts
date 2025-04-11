@@ -5,6 +5,7 @@ import { Otp } from './entities/otp.entity';
 import { User } from '@modules/user/entities/user.entity';
 import * as otpGenerator from 'otp-generator';
 import * as bcrypt from 'bcryptjs';
+import * as SYS_MSG from '@shared/constants/SystemMessages';
 import { CustomHttpException } from '@shared/helpers/custom-http-filter';
 
 export const generateOTP = async () => {
@@ -31,41 +32,39 @@ export class OtpService {
     private userRepository: Repository<User>,
   ) {}
 
-  async createOtp(userId: string, manager?: EntityManager): Promise<CreateOtpResult | null> {
+  async create(userId: string, manager?: EntityManager): Promise<CreateOtpResult | null> {
     try {
       const repo = manager ? manager.getRepository(User) : this.userRepository;
       const otpRepo = manager ? manager.getRepository(Otp) : this.otpRepository;
       const user = await repo.findOne({ where: { id: userId } });
 
-      if (!user) throw new NotFoundException('User not found');
+      if (!user) throw new NotFoundException(SYS_MSG.USER_NOT_FOUND);
 
       const { otp, hashedOTP } = await generateOTP();
-      const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
-      const otpEntity = otpRepo.create({ token: hashedOTP, expiry, user, user_id: userId });
+      const otpEntity = otpRepo.create({ otp: hashedOTP, expiry, user, user_id: userId });
       await otpRepo.save(otpEntity);
 
-      // Return plain OTP for email sending
       return { otpEntity, plainOtp: otp };
     } catch (error) {
-      console.log('OtpServiceError ~ createOtpError ~', error);
       return null;
     }
   }
 
-  async verifyOtp(userId: string, otp: string): Promise<boolean> {
+  async verify(userId: string, otp: string): Promise<boolean> {
     try {
       const otpRecord = await this.otpRepository.findOne({ where: { user_id: userId } });
 
-      if (!otpRecord) throw new NotFoundException('Invalid OTP');
+      if (!otpRecord) throw new NotFoundException(SYS_MSG.INVALID_OTP);
 
       if (otpRecord.expiry < new Date()) {
-        throw new NotAcceptableException('OTP expired');
+        throw new NotAcceptableException(SYS_MSG.EXPIRED_OTP);
       }
 
-      const isMatch = await bcrypt.compare(otp, otpRecord.token);
+      const isMatch = await bcrypt.compare(otp, otpRecord.otp);
       if (!isMatch) {
-        throw new NotFoundException('Invalid OTP');
+        throw new NotFoundException(SYS_MSG.INVALID_OTP);
       }
 
       otpRecord.verified = true;
@@ -73,7 +72,6 @@ export class OtpService {
 
       return true;
     } catch (error) {
-      console.log('OtpServiceError ~ verifyOtpError ~', error);
       return false;
     }
   }
@@ -87,26 +85,24 @@ export class OtpService {
 
       return otpRecord.verified;
     } catch (error) {
-      console.log('OtpServiceError ~ isOtpVerifiedError ~', error);
       return false;
     }
   }
 
-  async findOtp(userId: string): Promise<Otp | null> {
+  async find(userId: string): Promise<Otp | null> {
     const otp = await this.otpRepository.findOne({ where: { user_id: userId } });
-    if (!otp) throw new NotFoundException('OTP is invalid');
+    if (!otp) throw new NotFoundException(SYS_MSG.INVALID_OTP);
     return otp;
   }
 
-  async retrieveUserAndOtp(user_id: string, token: string): Promise<User | null> {
-    const otp = await this.otpRepository.findOne({ where: { token, user_id }, relations: ['user'] });
+  async retrieveUserAndOtp(user_id: string, otp: string): Promise<User | null> {
+    const userOtp = await this.otpRepository.findOne({ where: { otp, user_id }, relations: ['user'] });
+    if (!userOtp) throw new CustomHttpException(SYS_MSG.INVALID_OTP, HttpStatus.BAD_REQUEST);
 
-    if (!otp) throw new CustomHttpException('OTP is invalid', HttpStatus.BAD_REQUEST);
-
-    return otp.user;
+    return userOtp.user;
   }
 
-  async deleteOtp(userId: string) {
+  async remove(userId: string) {
     return await this.otpRepository.delete({ user_id: userId });
   }
 }

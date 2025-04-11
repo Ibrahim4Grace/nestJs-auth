@@ -1,6 +1,6 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Process, Processor } from '@nestjs/bull';
-import { MailInterface } from './interface/message.interface';
+import { MailInterface } from './interface/mail.interface';
 import { Job } from 'bull';
 import { Logger } from '@nestjs/common';
 

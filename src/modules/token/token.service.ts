@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { AuthJwtPayload, EmailVerificationPayload } from './interface/token.interface';
+import { AuthJwtPayload, EmailVerificationPayload, RefreshTokenPayload } from './interface/token.interface';
 
 @Injectable()
 export class TokenService {
@@ -17,7 +17,8 @@ export class TokenService {
     const secret = this.configService.get<string>('JWT_AUTH_SECRET');
     if (!secret) throw new Error('JWT_AUTH_SECRET is not defined');
 
-    const expiresIn = this.configService.get<string>('JWT_AUTH_EXPIRES_IN', '15m');
+    // const expiresIn = this.configService.get<string>('JWT_AUTH_EXPIRES_IN', '15m');
+    const expiresIn = this.configService.get<string>('JWT_AUTH_EXPIRES_IN');
     return this.jwtService.sign(payload, {
       secret,
       expiresIn,
@@ -35,14 +36,14 @@ export class TokenService {
     const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
     if (!secret) throw new Error('JWT_REFRESH_SECRET is not defined');
 
-    const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d');
+    const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN');
     return this.jwtService.sign(payload, {
       secret,
       expiresIn,
     });
   }
 
-  async verifyRefreshToken(token: string): Promise<AuthJwtPayload> {
+  async verifyRefreshToken(token: string): Promise<RefreshTokenPayload> {
     const secret = this.configService.get<string>('JWT_REFRESH_SECRET');
     if (!secret) throw new Error('JWT_REFRESH_SECRET is not defined');
     return this.jwtService.verify<AuthJwtPayload>(token, { secret });
@@ -53,7 +54,7 @@ export class TokenService {
     const secret = this.configService.get<string>('JWT_EMAIL_SECRET');
     if (!secret) throw new Error('JWT_EMAIL_SECRET is not defined');
 
-    const expiresIn = this.configService.get<string>('JWT_EMAIL_EXPIRES_IN', '1d');
+    const expiresIn = this.configService.get<string>('JWT_EMAIL_EXPIRES_IN');
     return this.jwtService.sign(payload, {
       secret,
       expiresIn,
