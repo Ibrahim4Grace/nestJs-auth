@@ -1,8 +1,9 @@
 import { UpdateRecordGeneric } from '@shared/helpers/UpdateRecordGeneric';
-import { UserRole } from '../../auth/enum/usertype';
+import { UserRole } from '@modules/auth/interfaces/auth.interface';
 
 export interface UserPayload {
   userId: string;
+  name: string;
   email: string;
   role: string;
   iat: number;
@@ -22,6 +23,8 @@ export interface UserInterface {
 
   is_active: boolean;
 
+  status: boolean;
+
   role: UserRole;
 
   created_at: Date;
@@ -31,7 +34,7 @@ export interface UserInterface {
   phone?: string;
 }
 
-export type CreateNewUserOptions = Pick<UserInterface, 'email' | 'name' | 'password' | 'role'> & {
+export type CreateNewUserOptions = Pick<UserInterface, 'email' | 'name' | 'password'> & {
   admin_secret?: string;
 };
 
@@ -41,10 +44,10 @@ export type UpdateUserRecordOption = UpdateRecordGeneric<UserIdentifierOptionsTy
 
 export type UserIdentifierOptionsType =
   | {
-      identifierType: 'id';
-      identifier: string;
-    }
+    identifierType: 'id';
+    identifier: string;
+  }
   | {
-      identifierType: 'email';
-      identifier: string;
-    };
+    identifierType: 'email';
+    identifier: string;
+  };

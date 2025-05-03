@@ -1,34 +1,146 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Body, Post, Patch, Param, Delete, Query, Request, UseGuards } from '@nestjs/common';
+import { UserPayload } from './interface/user.interface';
 import { UserService } from './user.service';
-// import { CreateUserDto } from './dto/create-user.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { GetUser } from '@shared/decorators/user.decorator';
+import { UpdateUserDto, DeactivateAccountDto, ReactivateAccountDto } from './dto/create-user.dto';
+import { UploadProfilePicDto } from './dto/upload-profile-pic.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FileValidator } from './dto/file.validator';
+import { BASE_URL, MAX_PROFILE_PICTURE_SIZE, VALID_UPLOADS_MIME_TYPES } from '@shared/constants/SystemMessages';
+import {
+  UseInterceptors,
+  UploadedFile,
+  Req,
+  ValidationPipe,
+  UsePipes,
+} from '@nestjs/common';
+import { UserRole } from '@modules/auth/interfaces/auth.interface';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { RolesGuard } from '@guards/roles.guard';
 
-@Controller('user')
+
+@ApiTags('Users')
+@ApiBearerAuth()
+@Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
-  // @Post()
-  // create(@Body() createUserDto: CreateUserDto) {
-  //   return this.userService.create(createUserDto);
-  // }
+  @Get()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all users (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @GetUser('userId') userId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10) {
+    return this.userService.findAll(page, limit, userId);
+  }
 
-  // @Get()
-  // findAll() {
-  //   return this.userService.findAll();
-  // }
+  @Patch('deactivate')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Deactivate a user account (Admin only)' })
+  @ApiResponse({ status: 200, description: 'The account has been successfully deactivated.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 500, description: 'Internal Server Error.' })
+  async deactivateAccount(
+    @GetUser('userId') adminId: string,
+    @Body() deactivateAccountDto: DeactivateAccountDto) {
+    return this.userService.deactivateUser(adminId, deactivateAccountDto);
+  }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.userService.findOne(+id);
-  // }
+  @Patch('/reactivate')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reactivate a user account  (Admin only)' })
+  @ApiResponse({ status: 200, description: 'The account has been successfully reactivated.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 500, description: 'Internal Server Error.' })
+  async reactivateAccount(
+    @GetUser('userId') adminId: string,
+    @Body() reactivateAccountDto: ReactivateAccountDto) {
+    return this.userService.reactivateUser(adminId, reactivateAccountDto);
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-  //   return this.userService.update(+id, updateUserDto);
-  // }
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get User Data by ID' })
+  @ApiResponse({ status: 200, description: 'User data fetched successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 500, description: 'Internal Server Error' })
+  findOne(
+    @Param('userId') userId: string) {
+    return this.userService.findOne(userId);
+  }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.userService.remove(+id);
-  // }
+
+  @Patch(':userId')
+  @ApiOperation({ summary: 'Update User' })
+  @ApiResponse({
+    status: 200,
+    description: 'User updated successfully',
+    type: UpdateUserDto,
+  })
+  async updateUser(
+    @Request() req: { user: UserPayload },
+    @Param('userId') userId: string,
+    @Body() updatedUserDto: UpdateUserDto,
+  ) {
+    return this.userService.update(userId, updatedUserDto, req.user);
+  }
+
+  @Delete(':userId')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Soft delete a user account' })
+  @ApiResponse({ status: 204, description: 'Deletion in progress' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 500, description: 'Internal Server Error' })
+  remove(
+    @Param('userId') userId: string,
+  ) {
+    return this.userService.remove(userId);
+  }
+
+
+  @ApiOperation({ summary: 'Upload Profile Picture' })
+  @ApiResponse({
+    status: 201,
+    description: 'Profile picture uploaded successfully',
+  })
+  @Post('upload-image')
+  @UseInterceptors(FileInterceptor('avatar'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: UploadProfilePicDto,
+    description: 'Profile picture file',
+  })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async uploadProfilePicture(
+    @GetUser('userId') userId: string,
+    @UploadedFile(
+      new FileValidator({
+        maxSize: MAX_PROFILE_PICTURE_SIZE,
+        mimeTypes: VALID_UPLOADS_MIME_TYPES,
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<{
+    status: string;
+    message: string;
+    data: { avatar_url: string };
+  }> {
+    const uploadProfilePicDto = new UploadProfilePicDto();
+    uploadProfilePicDto.avatar = file;
+    return await this.userService.uploadProfilePicture(userId, uploadProfilePicDto);
+  }
 }

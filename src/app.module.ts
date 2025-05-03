@@ -1,27 +1,27 @@
 import { Module, ValidationPipe } from '@nestjs/common';
-import { BorrowerModule } from './modules/borrower/borrower.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_PIPE } from '@nestjs/core';
-import { ClaimModule } from './modules/claim/claim.module';
-import { GuaranteeModule } from './modules/guarantee/guarantee.module';
-import { CollateralModule } from './modules/collateral/collateral.module';
+import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
+import corsConfig from '@config/cors.config';
+import { AuthModule } from '@modules/auth/auth.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { BullModule } from '@nestjs/bull';
 import dataSource from '@database/data-source';
 import authConfig from '@config/auth.config';
 import { AuthGuard } from '@guards/auth.guard';
-import { AuthModule } from './modules/auth/auth.module';
+import HealthController from './health.controller';
+import ProbeController from './probe.controller';
+import { TransformInterceptor } from './shared/inteceptors/transform.interceptor';
 import serverConfig from '@config/server.config';
 import { OtpModule } from '@modules/otp/otp.module';
 import { EmailModule } from '@modules/email/email.module';
 import { UserModule } from '@modules/user/user.module';
-import { RoleModule } from '@modules/role/role.module';
-import { TokenModule } from '@modules/token/token.module';
+import { TokenModule } from '@shared/token/token.module';
 import { JwtModule } from '@nestjs/jwt';
 import { parse } from 'url';
+
 
 @Module({
   providers: [
@@ -35,7 +35,13 @@ import { parse } from 'url';
         new ValidationPipe({
           whitelist: true,
           forbidNonWhitelisted: true,
+          transform: true,
+          transformOptions: { enableImplicitConversion: true },
         }),
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
     {
       provide: 'APP_GUARD',
@@ -45,10 +51,35 @@ import { parse } from 'url';
   imports: [
     ConfigModule.forRoot({
       envFilePath: ['.env', `.env.${process.env.PROFILE}`],
-      load: [serverConfig, authConfig],
+      load: [serverConfig, authConfig, corsConfig],
       isGlobal: true,
     }),
-    LoggerModule.forRoot(),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+
+        return {
+          pinoHttp: {
+            transport: isDevelopment
+              ? {
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
+                  colorize: true,
+                  levelFirst: true,
+                  translateTime: 'yyyy-mm-dd HH:MM:ss',
+                  ignore: 'pid,hostname',
+                  messageFormat: '{context}: {msg}',
+                },
+              }
+              : undefined,
+            level: isDevelopment ? 'debug' : 'info',
+          },
+        };
+      },
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: async () => ({
         ...dataSource.options,
@@ -59,20 +90,13 @@ import { parse } from 'url';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_AUTH_SECRET'),
-        signOptions: { expiresIn: '1d' },
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_AUTH_EXPIRES_IN')
+        },
       }),
       inject: [ConfigService],
+      global: true,
     }),
-    BorrowerModule,
-    ClaimModule,
-    GuaranteeModule,
-    CollateralModule,
-    AuthModule,
-    TokenModule,
-    UserModule,
-    OtpModule,
-    EmailModule,
-    RoleModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -84,7 +108,7 @@ import { parse } from 'url';
           },
         },
         defaults: {
-          from: `"Spot-light" <${configService.get<string>('SMTP_USER')}>`,
+          from: `"Smart-Hr" <${configService.get<string>('SMTP_USER')}>`,
         },
         template: {
           dir: process.cwd() + '/src/modules/email/templates',
@@ -124,6 +148,16 @@ import { parse } from 'url';
       },
       inject: [ConfigService],
     }),
+
+    AuthModule,
+    TokenModule,
+    UserModule,
+    OtpModule,
+    EmailModule,
+
+
+
   ],
+  controllers: [HealthController, ProbeController],
 })
-export class AppModule {}
+export class AppModule { }
